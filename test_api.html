@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba de API de Tos</title>
+</head>
+<body>
+
+    <h2>Analizar Tos (Prueba API)</h2>
+
+    <form id="uploadForm">
+        <label for="cedula">Cédula:</label>
+        <input type="text" id="cedula" name="cedula" value="123456" required><br><br>
+
+        <label for="audioFile">Archivo de Audio (.wav):</label>
+        <input type="file" id="audioFile" name="audioFile" accept="audio/wav" required><br><br>
+
+        <button type="submit" id="submitBtn">Analizar</button>
+    </form>
+
+    <div id="loading" style="display:none;">Procesando... por favor espera.</div>
+
+    <h3>Resultados:</h3>
+    <pre id="jsonResult" style="background: #f4f4f4; padding: 10px; border: 1px solid #ddd;"></pre>
+    
+    <h4>Diagnóstico: <span id="diagnosticoSpan"></span></h4>
+    <h4>Certeza: <span id="certezaSpan"></span></h4>
+
+    <h4>Espectrograma:</h4>
+    <img id="diagramImage" src="" alt="Espectrograma" style="display:none; max-width: 600px;">
+
+    <h4>Audio (1 segundo - GreenArcade input):</h4>
+    <audio id="audioPlayer" controls style="display:none;"></audio>
+
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const jsonResult = document.getElementById('jsonResult');
+            const diagramImage = document.getElementById('diagramImage');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const diagSpan = document.getElementById('diagnosticoSpan');
+            const certSpan = document.getElementById('certezaSpan');
+
+            // Reset UI
+            btn.disabled = true;
+            loading.style.display = 'block';
+            jsonResult.textContent = '';
+            diagramImage.style.display = 'none';
+            diagramImage.src = '';
+            audioPlayer.style.display = 'none';
+            audioPlayer.src = '';
+            diagSpan.textContent = '';
+            certSpan.textContent = '';
+
+            const cedula = document.getElementById('cedula').value;
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
+
+            const formData = new FormData();
+            formData.append('cedula', cedula);
+            formData.append('audio_file', file);
+
+            try {
+                // Assuming API is running on localhost:5005
+                const response = await fetch('http://localhost:5005/api/v1/analyze-audio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                // Print raw JSON
+                jsonResult.textContent = JSON.stringify(data, null, 2);
+
+                if (response.ok && data.analisis_tos) {
+                    const analisis = data.analisis_tos;
+                    
+                    diagSpan.textContent = analisis.diagnostico;
+                    certSpan.textContent = analisis.certeza.toFixed(4);
+
+                    // Display Base64 Image
+                    if (analisis.diagrama) {
+                        diagramImage.src = 'data:image/png;base64,' + analisis.diagrama;
+                        diagramImage.style.display = 'block';
+                    }
+
+                    // Play Base64 Audio
+                    if (analisis.audio) {
+                        // Assuming audio is 16-bit PCM wav handled by browser internally from base64 string
+                        audioPlayer.src = 'data:audio/wav;base64,' + analisis.audio;
+                        audioPlayer.style.display = 'block';
+                    }
+                } else {
+                    jsonResult.textContent = "Error en la petición: " + JSON.stringify(data, null, 2);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                jsonResult.textContent = 'Hubo un error de conexión: ' + error.message;
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

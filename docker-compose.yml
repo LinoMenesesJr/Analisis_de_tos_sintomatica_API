@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    container_name: api_deteccion_tos
+    ports:
+      - "5005:5005"
+    # volumes:
+    #   - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
